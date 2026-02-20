@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import authService from '../appwrite/auth/authService';
 import Input from '../components/input';
 import Button from '../components/button';
 
@@ -18,8 +19,48 @@ function Signup() {
 
   const signupHandler = async (data) => {
     setError('');
-    setSuccessMessage(`Demo: Account created for ${data.email}. You can now log in.`);
-    setTimeout(() => navigate('/auth/login'), 2500);
+    setSuccessMessage('');
+
+    try {
+      const user = await authService.createAccount(data);
+      if (!user) {
+        setError('Signup failed. Please try again.');
+        return;
+      }
+
+      const session = await authService.login({
+        email: data.email,
+        password: data.password
+      });
+      if (!session) {
+        setError('Account created but login failed. Please try logging in manually.');
+        return;
+      }
+
+      const verificationUrl = `${window.location.origin}/verify`;
+      try {
+        await authService.sendVerificationEmail(verificationUrl);
+        setSuccessMessage(`Account created successfully! A verification email has been sent to ${data.email}. Please check your inbox and click the verification link.`);
+        setTimeout(() => navigate('/auth/login'), 5000);
+      } catch (verificationError) {
+        console.error('Verification email error:', verificationError);
+        setSuccessMessage(`Account created successfully! However, we couldn't send the verification email. Please go to your account settings to request a new verification email.`);
+        setTimeout(() => navigate('/'), 5000);
+      }
+    } catch (err) {
+      console.error('Signup error:', err);
+      if (err.code === 409 || err.type === 'user_already_exists') {
+        setError('User already exists, please login.');
+      } else if (err.code === 400) {
+        setError('Invalid data. Please check your inputs.');
+      } else if (err.message === 'Failed to fetch') {
+        setError('Network error. Please check your internet connection.');
+      } else if (err.code === 429) {
+        setError('Too many requests. Please wait a few minutes and try again.');
+      } else {
+        setError(err.message || 'Signup failed. Please try again.');
+      }
+    }
   };
 
   return (

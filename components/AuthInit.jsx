@@ -1,15 +1,40 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { setAuthFromSession } from "../store/authSlices";
+import authService from "../appwrite/auth/authService";
 
-/** Frontend-only: no backend. Mark auth as checked so app can render. */
+/**
+ * On app load (and on every refresh), check for an existing Appwrite session.
+ * If the user is already logged in, restore userData in Redux so they stay on the page.
+ */
 export default function AuthInit({ children }) {
   const dispatch = useDispatch();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    dispatch(setAuthFromSession(null));
-    setReady(true);
+    let cancelled = false;
+
+    async function checkSession() {
+      try {
+        const user = await authService.getCurrentUser();
+        if (!cancelled) {
+          dispatch(setAuthFromSession(user ?? null));
+        }
+      } catch {
+        if (!cancelled) {
+          dispatch(setAuthFromSession(null));
+        }
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
+      }
+    }
+
+    checkSession();
+    return () => {
+      cancelled = true;
+    };
   }, [dispatch]);
 
   if (!ready) {

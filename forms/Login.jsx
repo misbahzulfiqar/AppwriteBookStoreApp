@@ -4,6 +4,7 @@ import { login as authLogin } from "../store/authSlices";
 import Button from "../components/button";
 import Input from "../components/input";
 import { useDispatch } from "react-redux";
+import authService from "../appwrite/auth/authService";
 import { useForm } from "react-hook-form";
 
 function Login() {
@@ -24,8 +25,14 @@ function Login() {
   const login = async (data) => {
     setError("");
     try {
-      const userData = { email: data.email, name: data.email?.split("@")[0] || "User" };
-      dispatch(authLogin(userData));
+      const result = await authService.login(data);
+      if (result.alreadyLoggedIn) {
+        alert("You are already logged in");
+      } else {
+        alert("You are successfully logged in");
+      }
+      const userData = await authService.getCurrentUser();
+      if (userData) dispatch(authLogin(userData));
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -44,10 +51,19 @@ function Login() {
     setIsResetting(true);
 
     try {
-      setResetMessage("Demo: No email sent. Use any email/password on the login form to sign in.");
+      const recoveryUrl = `${window.location.origin}/reset-password`;
+      await authService.account.createRecovery(resetEmail, recoveryUrl);
+      setResetMessage("Password reset instructions have been sent to your email. Please check your inbox.");
       setResetStep(2);
     } catch (err) {
-      setError(err.message || "Failed to send reset email.");
+      console.error("Password reset error:", err);
+      if (err.code === 404 || err.message?.includes("not found")) {
+        setError("No account found with this email address");
+      } else if (err.code === 429) {
+        setError("Too many attempts. Please try again later.");
+      } else {
+        setError(err.message || "Failed to send reset email. Please try again.");
+      }
     } finally {
       setIsResetting(false);
     }
@@ -82,7 +98,8 @@ function Login() {
     setIsResetting(true);
 
     try {
-      setResetMessage("Demo: Password reset noted. You can now use the login form.");
+      await authService.account.updateRecovery(resetToken, newPassword);
+      setResetMessage("Password has been reset successfully! You can now login with your new password.");
       setTimeout(() => {
         setIsForgotPassword(false);
         setResetStep(1);
@@ -96,9 +113,9 @@ function Login() {
       console.error("Password update error:", err);
       if (err.code === 401) {
         setError("Invalid or expired reset token. Please request a new one.");
-        setResetStep(1); // Go back to request step
+        setResetStep(1);
       } else {
-        setError("Failed to reset password. Please try again.");
+        setError(err.message || "Failed to reset password. Please try again.");
       }
     } finally {
       setIsResetting(false);

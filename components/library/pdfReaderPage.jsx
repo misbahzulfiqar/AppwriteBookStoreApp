@@ -57,7 +57,35 @@ function PDFReaderPage() {
           throw new Error('Failed to generate PDF URL');
         }
         
-        setPdfUrl(pdfUrlResult);
+        try {
+          const testResponse = await fetch(pdfUrlResult);
+          if (!testResponse.ok) {
+            const alternativeUrl = `https://nyc.cloud.appwrite.io/v1/storage/buckets/694cdba10015e74ddd56/files/${bookData.pdfFileId}/view?project=694bc436001e80f4822d&timestamp=${Date.now()}`;
+            const altTest = await fetch(alternativeUrl);
+            if (altTest.ok) {
+              setPdfUrl(alternativeUrl);
+              setIsLoading(false);
+              return;
+            }
+            throw new Error(`PDF not accessible (Status: ${testResponse.status})`);
+          }
+          setPdfUrl(pdfUrlResult);
+        } catch (urlError) {
+          try {
+            const directUrl = bookService.storage.getFileDownload(
+              '694cdba10015e74ddd56',
+              bookData.pdfFileId
+            );
+            const downloadTest = await fetch(directUrl);
+            if (downloadTest.ok) {
+              setPdfUrl(directUrl);
+            } else {
+              throw new Error('All URL methods failed');
+            }
+          } catch (finalError) {
+            throw new Error('PDF cannot be loaded. Please check bucket permissions and that the file exists.');
+          }
+        }
         setIsLoading(false);
         
       } catch (error) {

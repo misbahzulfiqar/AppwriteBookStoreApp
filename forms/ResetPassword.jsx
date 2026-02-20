@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import authService from '../appwrite/auth/authService';
 import Input from '../components/input';
 import Button from '../components/button';
 
@@ -37,9 +38,20 @@ function ResetPassword() {
         }
 
         setLoading(true);
-        setMessage('Demo: Password reset successful! You can now log in.');
-        setTimeout(() => navigate('/auth/login'), 3000);
-        setLoading(false);
+        try {
+            await authService.confirmPasswordReset(userId, secret, newPassword);
+            setMessage('Password reset successful! You can now log in with your new password.');
+            setTimeout(() => navigate('/auth/login'), 3000);
+        } catch (err) {
+            console.error('Reset error:', err);
+            if (err.code === 401 || err.message?.includes('invalid')) {
+                setError('This reset link is invalid or has expired. Please request a new one.');
+            } else {
+                setError(err.message || 'Failed to reset password. Please try again.');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!secret || !userId) {

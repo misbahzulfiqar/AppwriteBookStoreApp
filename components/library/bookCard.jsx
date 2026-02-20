@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { updateBook, deleteBook } from './bookSlice';
+import { storage } from '../../appwrite/auth/Client';
+import { ID } from 'appwrite';
 
 function BookCard({ book, onCoverUpdate, isEditable = false, showPublishButton = false }) {
   const navigate = useNavigate();
@@ -10,8 +12,29 @@ function BookCard({ book, onCoverUpdate, isEditable = false, showPublishButton =
   const [uploading, setUploading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
 
+  const BUCKET_ID = '694cdba10015e74ddd56';
+  const PROJECT_ID = '694bc436001e80f4822d';
+
   useEffect(() => {
-    setImageUrl(book?.coverImageId || book?.coverImageUrl || null);
+    const generateImageUrl = () => {
+      if (book?.coverImageId) {
+        try {
+          const url = storage.getFileView(BUCKET_ID, book.coverImageId);
+          setImageUrl(url);
+        } catch (viewError) {
+          try {
+            const previewUrl = storage.getFilePreview(BUCKET_ID, book.coverImageId);
+            setImageUrl(previewUrl);
+          } catch (previewError) {
+            const manualUrl = `https://nyc.cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${book.coverImageId}/view?project=${PROJECT_ID}`;
+            setImageUrl(manualUrl);
+          }
+        }
+      } else {
+        setImageUrl(book?.coverImageUrl || null);
+      }
+    };
+    generateImageUrl();
   }, [book?.coverImageId, book?.coverImageUrl]);
 
   const progress = book.totalPages && book.pagesRead 
@@ -50,13 +73,18 @@ function BookCard({ book, onCoverUpdate, isEditable = false, showPublishButton =
     }
     setUploading(true);
     try {
-      const blobUrl = URL.createObjectURL(file);
-      await dispatch(updateBook({ bookId: book.$id, updates: { coverImageId: blobUrl } })).unwrap();
-      setImageUrl(blobUrl);
-      if (onCoverUpdate) onCoverUpdate(book.$id, blobUrl);
+      const fileId = ID.unique();
+      await storage.createFile(BUCKET_ID, fileId, file);
+      await dispatch(updateBook({
+        bookId: book.$id,
+        updates: { coverImageId: fileId }
+      })).unwrap();
+      const newUrl = storage.getFileView(BUCKET_ID, fileId);
+      setImageUrl(newUrl);
+      if (onCoverUpdate) onCoverUpdate(book.$id, fileId);
       alert('Cover image updated');
     } catch (error) {
-      alert('Failed to update: ' + error.message);
+      alert('Failed to upload: ' + error.message);
     } finally {
       setUploading(false);
       event.target.value = '';

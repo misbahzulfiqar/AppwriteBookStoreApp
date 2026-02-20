@@ -1,6 +1,7 @@
 // Create a new file: src/Pages/VerifyEmail.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import authService from '../appwrite/auth/authService';
 import Button from '../components/button';
 
 function VerifyEmail() {
@@ -10,17 +11,27 @@ function VerifyEmail() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const userId = searchParams.get('userId');
-    const secret = searchParams.get('secret');
+    const verifyEmail = async () => {
+      const userId = searchParams.get('userId');
+      const secret = searchParams.get('secret');
 
-    if (!userId || !secret) {
-      setStatus('error');
-      setMessage('Invalid verification link. Please request a new verification email.');
-      return;
-    }
-    setStatus('success');
-    setMessage('Demo: Email verified successfully!');
-    setTimeout(() => navigate('/auth/login'), 3000);
+      if (!userId || !secret) {
+        setStatus('error');
+        setMessage('Invalid verification link. Please request a new verification email.');
+        return;
+      }
+
+      try {
+        await authService.verifyEmail(userId, secret);
+        setStatus('success');
+        setMessage('Your email has been verified successfully!');
+        setTimeout(() => navigate('/auth/login'), 3000);
+      } catch (err) {
+        setStatus('error');
+        setMessage(err.message || 'Verification failed. Please request a new verification email.');
+      }
+    };
+    verifyEmail();
   }, [searchParams, navigate]);
 
   return (
