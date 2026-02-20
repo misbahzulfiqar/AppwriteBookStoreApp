@@ -4,7 +4,6 @@ import { login as authLogin } from "../store/authSlices";
 import Button from "../components/button";
 import Input from "../components/input";
 import { useDispatch } from "react-redux";
-import authService from "../appwrite/auth/authService";
 import { useForm } from "react-hook-form";
 
 function Login() {
@@ -25,19 +24,8 @@ function Login() {
   const login = async (data) => {
     setError("");
     try {
-      const result = await authService.login(data);
-
-      console.log(result);
-
-      if (result.alreadyLoggedIn) {
-        alert("You are already logged in");
-      } else {
-        alert("You are successfully logged in");
-      }
-
-      const userData = await authService.getCurrentUser();
-      if (userData) dispatch(authLogin(userData));
-
+      const userData = { email: data.email, name: data.email?.split("@")[0] || "User" };
+      dispatch(authLogin(userData));
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -56,26 +44,10 @@ function Login() {
     setIsResetting(true);
 
     try {
-      const recoveryUrl = `${window.location.origin}/reset-password`;
-
-      const response = await authService.account.createRecovery(
-        resetEmail,
-        recoveryUrl
-      );
-
-      setResetMessage(
-        "Password reset instructions have been sent to your email. Please check your inbox."
-      );
-      setResetStep(2); // Move to token verification step
+      setResetMessage("Demo: No email sent. Use any email/password on the login form to sign in.");
+      setResetStep(2);
     } catch (err) {
-      console.error("Password reset error:", err);
-      if (err.code === 404 || err.message.includes("not found")) {
-        setError("No account found with this email address");
-      } else if (err.code === 429) {
-        setError("Too many attempts. Please try again later.");
-      } else {
-        setError("Failed to send reset email. Please try again.");
-      }
+      setError(err.message || "Failed to send reset email.");
     } finally {
       setIsResetting(false);
     }
@@ -110,15 +82,7 @@ function Login() {
     setIsResetting(true);
 
     try {
-      // Update password using appwrite's method
-      const response = await authService.account.updateRecovery(
-        resetToken,
-        newPassword
-      );
-
-      setResetMessage(
-        "Password has been reset successfully! You can now login with your new password."
-      );
+      setResetMessage("Demo: Password reset noted. You can now use the login form.");
       setTimeout(() => {
         setIsForgotPassword(false);
         setResetStep(1);

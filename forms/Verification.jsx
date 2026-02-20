@@ -1,7 +1,6 @@
 // Create a new file: src/Pages/VerifyEmail.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import authService from '../appwrite/auth/authService';
 import Button from '../components/button';
 
 function VerifyEmail() {
@@ -11,34 +10,17 @@ function VerifyEmail() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const userId = searchParams.get('userId');
-      const secret = searchParams.get('secret');
+    const userId = searchParams.get('userId');
+    const secret = searchParams.get('secret');
 
-      if (!userId || !secret) {
-        setStatus('error');
-        setMessage('Invalid verification link. Please request a new verification email.');
-        return;
-      }
-
-      try {
-        await authService.verifyEmail(userId, secret);
-        setStatus('success');
-        setMessage('Your email has been verified successfully!');
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
-        
-      } catch (error) {
-        console.error('Verification error:', error);
-        setStatus('error');
-        setMessage('Verification failed. The link may be expired or invalid. Please request a new verification email.');
-      }
-    };
-
-    verifyEmail();
+    if (!userId || !secret) {
+      setStatus('error');
+      setMessage('Invalid verification link. Please request a new verification email.');
+      return;
+    }
+    setStatus('success');
+    setMessage('Demo: Email verified successfully!');
+    setTimeout(() => navigate('/auth/login'), 3000);
   }, [searchParams, navigate]);
 
   return (
@@ -74,7 +56,7 @@ function VerifyEmail() {
               marginBottom: '20px' 
             }}>✗</div>
             <p style={{ marginBottom: '20px' }}>{message}</p>
-            <Button onClick={() => navigate('/login')}>
+            <Button onClick={() => navigate('/auth/login')}>
               Go to Login
             </Button>
           </div>

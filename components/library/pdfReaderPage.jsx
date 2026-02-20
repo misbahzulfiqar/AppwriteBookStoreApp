@@ -57,63 +57,8 @@ function PDFReaderPage() {
           throw new Error('Failed to generate PDF URL');
         }
         
-        // 3. TEST PDF URL
-        console.log('🧪 Step 3: Testing PDF URL accessibility...');
-        try {
-          const testResponse = await fetch(pdfUrlResult);
-          console.log('✅ PDF URL test result:', {
-            ok: testResponse.ok,
-            status: testResponse.status,
-            statusText: testResponse.statusText
-          });
-          
-          if (!testResponse.ok) {
-            console.log('⚠️ PDF URL failed, trying alternative...');
-            
-            // Try alternative URL
-            const alternativeUrl = `https://nyc.cloud.appwrite.io/v1/storage/buckets/694cdba10015e74ddd56/files/${bookData.pdfFileId}/view?project=694bc436001e80f4822d&timestamp=${Date.now()}`;
-            console.log('🔄 Alternative URL:', alternativeUrl);
-            
-            const altTest = await fetch(alternativeUrl);
-            if (altTest.ok) {
-              console.log('✅ Alternative URL works!');
-              setPdfUrl(alternativeUrl);
-              setIsLoading(false);
-              return;
-            }
-            
-            throw new Error(`PDF not accessible (Status: ${testResponse.status})`);
-          }
-          
-          // 4. SET PDF URL
-          console.log('🎯 Step 4: Setting PDF URL for viewer...');
-          setPdfUrl(pdfUrlResult);
-          setIsLoading(false);
-          
-        } catch (urlError) {
-          console.error('❌ PDF URL test failed:', urlError);
-          
-          // Try one more time with different method
-          try {
-            const directUrl = bookService.storage.getFileDownload(
-              '694cdba10015e74ddd56',
-              bookData.pdfFileId
-            );
-            console.log('🔄 Trying download URL:', directUrl);
-            
-            const downloadTest = await fetch(directUrl);
-            if (downloadTest.ok) {
-              setPdfUrl(directUrl);
-              setError('Using download URL (view URL failed)');
-            } else {
-              throw new Error('All URL methods failed');
-            }
-          } catch (finalError) {
-            throw new Error(`PDF cannot be loaded. Please check: 1) Bucket permissions 2) File exists`);
-          }
-          
-          setIsLoading(false);
-        }
+        setPdfUrl(pdfUrlResult);
+        setIsLoading(false);
         
       } catch (error) {
         console.error('❌ CRITICAL ERROR:', error);

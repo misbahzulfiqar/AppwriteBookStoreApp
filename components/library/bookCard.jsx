@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { updateBook, deleteBook } from './bookSlice';
-import { storage } from '../../appwrite/auth/Client';
-import { ID } from 'appwrite';
 
 function BookCard({ book, onCoverUpdate, isEditable = false, showPublishButton = false }) {
   const navigate = useNavigate();
@@ -12,61 +10,9 @@ function BookCard({ book, onCoverUpdate, isEditable = false, showPublishButton =
   const [uploading, setUploading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
 
-  const BUCKET_ID = '694cdba10015e74ddd56';
-  const PROJECT_ID = '694bc436001e80f4822d';
-
-  // DEBUG: Log ALL book data
   useEffect(() => {
-    console.log('📚 BookCard received FULL book data:', {
-      id: book?.$id,
-      title: book?.title,
-      author: book?.author,
-      coverImageId: book?.coverImageId,
-      ALL_FIELDS: book // This shows everything
-    });
-    
-    console.log('🔍 Checking for coverImageId in different places:');
-    console.log('book.coverImageId:', book?.coverImageId);
-    console.log('book.coverImageUrl:', book?.coverImageUrl);
-    console.log('book.featuredImage:', book?.featuredImage);
-    console.log('book.image:', book?.image);
-    console.log('book.cover:', book?.cover);
-  }, [book]);
-
-  // Generate image URL from coverImageId
-  useEffect(() => {
-    const generateImageUrl = () => {
-      if (book?.coverImageId) {
-        console.log('✅ Found coverImageId:', book.coverImageId);
-        
-        // Try multiple methods to get the URL
-        try {
-          const url = storage.getFileView(BUCKET_ID, book.coverImageId);
-          console.log('🔗 Generated URL via getFileView:', url);
-          setImageUrl(url);
-        } catch (viewError) {
-          console.log('⚠️ getFileView failed, trying getFilePreview...');
-          
-          try {
-            const previewUrl = storage.getFilePreview(BUCKET_ID, book.coverImageId);
-            console.log('🔗 Generated URL via getFilePreview:', previewUrl);
-            setImageUrl(previewUrl);
-          } catch (previewError) {
-            console.log('⚠️ getFilePreview failed, constructing manual URL...');
-            
-            const manualUrl = `https://nyc.cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${book.coverImageId}/view?project=${PROJECT_ID}`;
-            console.log('🔗 Using manual URL:', manualUrl);
-            setImageUrl(manualUrl);
-          }
-        }
-      } else {
-        console.log('❌ NO coverImageId found for book:', book?.title);
-        setImageUrl(null);
-      }
-    };
-
-    generateImageUrl();
-  }, [book?.coverImageId]);
+    setImageUrl(book?.coverImageId || book?.coverImageUrl || null);
+  }, [book?.coverImageId, book?.coverImageUrl]);
 
   const progress = book.totalPages && book.pagesRead 
     ? Math.round((parseInt(book.pagesRead) / parseInt(book.totalPages)) * 100)
@@ -98,38 +44,19 @@ function BookCard({ book, onCoverUpdate, isEditable = false, showPublishButton =
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
     }
-    
     setUploading(true);
-    
     try {
-      const fileId = ID.unique();
-      
-      await storage.createFile(
-        BUCKET_ID,
-        fileId,
-        file
-      );
-      
-      await dispatch(updateBook({
-        bookId: book.$id,
-        updates: { coverImageId: fileId }
-      })).unwrap();
-      
-      const newUrl = storage.getFileView(BUCKET_ID, fileId);
-      setImageUrl(newUrl);
-      
-      if (onCoverUpdate) {
-        onCoverUpdate(book.$id, fileId);
-      }
-      
+      const blobUrl = URL.createObjectURL(file);
+      await dispatch(updateBook({ bookId: book.$id, updates: { coverImageId: blobUrl } })).unwrap();
+      setImageUrl(blobUrl);
+      if (onCoverUpdate) onCoverUpdate(book.$id, blobUrl);
       alert('Cover image updated');
     } catch (error) {
-      alert('Failed to upload: ' + error.message);
+      alert('Failed to update: ' + error.message);
     } finally {
       setUploading(false);
       event.target.value = '';

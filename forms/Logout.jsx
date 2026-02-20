@@ -1,22 +1,15 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import authService from '../appwrite/auth/authService';
 import { logout as authLogout } from '../store/authSlices';
 
 function LogoutBtn() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const logoutHandler = async () => {
-    try {
-      await authService.logout();
-      dispatch(authLogout());
-      navigate('/auth/login'); // optional: redirect to login page after logout
-    } catch (err) {
-      console.error('Logout failed:', err);
-      alert('Failed to logout. Please try again.');
-    }
+  const logoutHandler = () => {
+    dispatch(authLogout());
+    navigate('/auth/login');
   };
 
   return (

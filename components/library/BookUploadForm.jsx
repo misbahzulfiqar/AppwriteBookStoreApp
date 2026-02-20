@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createBook } from './bookSlice';
-import { storage } from '../../appwrite/auth/Client';
-import { ID } from 'appwrite';
 
 function BookUploadForm() {
   const dispatch = useDispatch();
@@ -26,8 +24,6 @@ function BookUploadForm() {
   const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
-
-  const BUCKET_ID = '694cdba10015e74ddd56';
 
   const handleChange = (e) => {
     setFormData({
@@ -84,16 +80,7 @@ const handleCoverUpload = (e) => {
       return;
     }
 
-    let coverImageId = null;
-
-      if (coverImageFile) {
-        const fileId = ID.unique();
-        const uploadedCover = await storage.createFile(BUCKET_ID, fileId, coverImageFile);
-        coverImageId = uploadedCover.$id;
-      }
-
-
-          try {
+    try {
     const bookData = {
       title: formData.title.trim(),
       author: formData.author.trim(),
@@ -102,7 +89,6 @@ const handleCoverUpload = (e) => {
       pagesRead: formData.pagesRead ? parseInt(formData.pagesRead) : 0,
       totalPages: formData.totalPages ? parseInt(formData.totalPages) : 0,
       rating: formData.rating ? parseInt(formData.rating) : 0,
-      coverImageId: coverImageId, // <- uploaded on submit
       isPublic: formData.isPublic || false,
     };
 
